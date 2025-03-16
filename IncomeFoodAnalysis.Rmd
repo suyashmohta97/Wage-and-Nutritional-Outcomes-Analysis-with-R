@@ -1,0 +1,190 @@
+---
+
+author: "Suyash Mohta"
+date: "2024-10-30"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+
+setwd("E:/MSBA Coursework Quarter-Wise/MSBA Fall '24/BAX 401 - III (Mike)/HomeWork 2")
+
+library(dplyr)
+library(ggplot2)
+
+
+load("HW2.Rdata")
+```
+
+
+## Question 1
+
+```{r}
+
+
+# Summarize the data
+summary(CAMW)
+
+# Create Treatment Period and Treatment Group variable
+CAMW$TreatPer = CAMW$Month>6
+CAMW$TreatGroup = CAMW$Group=="MinWage"
+
+# Summarize Calories by Group
+summary_table1 <- CAMW %>%
+  group_by(TreatGroup,TreatPer) %>%
+  summarize(Calories = mean(Calories, na.rm = TRUE), .groups = "drop")
+print(summary_table1)
+
+# Parallel Trends
+# Raw Data
+ggplot(CAMW, aes(x = Month, y = Calories, color = Group)) +
+  stat_summary(fun = mean, geom = "line") +
+  scale_x_continuous(breaks = seq(min(CAMW$Month), max(CAMW$Month), by = 1))
+
+
+pretreat_data <- subset(CAMW, CAMW$Month < 7)
+
+# Statistical Test
+PTrends_cals <- lm(pretreat_data$Calories ~ as.factor(pretreat_data$Month)*pretreat_data$TreatGroup)
+summary(PTrends_cals)
+
+# Dif-in-Dif
+DID1 <- lm(CAMW$Calories ~ CAMW$TreatPer*CAMW$TreatGroup)
+summary(DID1)
+
+```
+
+
+
+```{r}
+
+
+# Summarize BasketScore by Group
+summary_table2 <- CAMW %>%
+  group_by(TreatGroup,TreatPer) %>%
+  summarize(BasketScore = mean(BasketScore, na.rm = TRUE), .groups = "drop")
+print(summary_table2)
+
+# Parallel Trends
+# Raw Data
+ggplot(CAMW, aes(x = Month, y = BasketScore, color = Group)) +
+  stat_summary(fun = mean, geom = "line") +
+  scale_x_continuous(breaks = seq(min(CAMW$Month), max(CAMW$Month), by = 1))
+
+# Statistical Test for pre-treat data
+PTrends_bskt <- lm(pretreat_data$BasketScore ~ as.factor(pretreat_data$Month)*pretreat_data$TreatGroup)
+summary(PTrends_bskt)
+
+# Dif-in-Dif
+DID2 <- lm(CAMW$BasketScore ~ CAMW$TreatPer*CAMW$TreatGroup)
+summary(DID2)
+
+
+```
+
+
+
+## Question 2
+
+
+```{r}
+
+grouped_data <- 
+  USMW |> 
+  group_by(State,Year,Month) |> 
+  summarise(avg_cals = mean(Calories) , 
+            avg_basket = mean(BasketScore) , 
+            min_wage = min(MinWage) )
+
+
+grouped_data$Date <- as.Date(as.Date(paste(grouped_data$Year,grouped_data$Month,"01",sep="-")) )  
+
+ggplot(grouped_data) + 
+  geom_line(aes(x=Date,y=avg_cals,color=as.factor(State)))
+  
+
+
+```
+
+
+
+```{r}
+
+## Formal Parallel Trends Trends for Calories
+USMW$Date <- as.Date(as.Date(paste(USMW$Year,USMW$Month,"01",sep="-")) )
+
+pre_treat_data <- subset(USMW, USMW$Date < as.Date("2014-09-01") )
+
+cals <- pre_treat_data$Calories
+dates <- pre_treat_data$Date
+states <- pre_treat_data$State
+treatment <- pre_treat_data$min_wage
+
+# Statistical Test
+ptrends_cals <- lm(cals ~ as.factor(dates)*as.factor(states) )
+summary(ptrends_cals)
+
+
+```
+
+
+```{r}
+
+cals <- USMW$Calories
+dates <- USMW$Date
+states <- USMW$State
+treatment <- USMW$MinWage
+
+summary(
+  lm(cals ~ as.factor(dates) + states + treatment)
+)
+
+```
+
+
+
+```{r}
+
+## Parallel Trends Visual
+ggplot(grouped_data) + 
+  geom_line(aes(x=Date,y=avg_basket,color=as.factor(State)))
+  
+```
+
+```{r}
+## Formal Parallel Trends Trends for Basket Score
+
+bskt <- pre_treat_data$BasketScore
+dates <- pre_treat_data$Date
+states <- pre_treat_data$State
+treatment <- pre_treat_data$min_wage
+
+# Statistical Test
+ptrends_bskt <- lm(bskt ~ as.factor(dates)*as.factor(states) )
+summary(ptrends_bskt)
+
+```
+
+
+
+```{r}
+
+avg_bskt <- USMW$BasketScore
+dates <- USMW$Date
+states <- USMW$State
+treatment <- USMW$MinWage
+
+summary(
+  lm(avg_bskt ~ as.factor(dates) + states + treatment)
+)
+
+
+```
+
